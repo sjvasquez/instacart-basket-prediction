@@ -78,8 +78,8 @@ The final reorder probabilities are a weighted average of the outputs from the s
   - scikit-learn==0.18.
   - tensorflow==1.3.0rc2
 
-## How to run the full solution
+<!-- ## How to run the full solution
  - [Download](https://www.kaggle.com/c/instacart-market-basket-analysis/data) the data files and place them in`data/raw`.
  - Run `preprocessing/preprocess.sh` for the preliminary data preprocessing.
  - Run `models/train_base_models.sh` to fit the base models on the prior data.
- - Run `models/blend.sh` to train the blended models and generate a final submission.
+ - Run `models/blend.sh` to train the blended models and generate a final submission. -->

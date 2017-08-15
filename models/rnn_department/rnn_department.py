@@ -79,11 +79,11 @@ class DataReader(object):
             yield batch
 
 
-class rnn0(TFBaseModel):
+class rnn(TFBaseModel):
 
     def __init__(self, lstm_size=300, **kwargs):
         self.lstm_size = lstm_size
-        super(rnn0, self).__init__(**kwargs)
+        super(rnn, self).__init__(**kwargs)
 
     def calculate_loss(self):
         x = self.get_input_sequences()
@@ -187,7 +187,7 @@ if __name__ == '__main__':
 
     dr = DataReader(data_dir=os.path.join(base_dir, 'data'))
 
-    nn = rnn0(
+    nn = rnn(
         reader=dr,
         log_dir=os.path.join(base_dir, 'logs'),
         checkpoint_dir=os.path.join(base_dir, 'checkpoints'),

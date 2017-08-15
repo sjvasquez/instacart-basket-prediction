@@ -192,9 +192,9 @@ if __name__ == '__main__':
 
     nn = rnn(
         reader=dr,
-        log_dir=os.path.join(base_dir, 'logs'),
-        checkpoint_dir=os.path.join(base_dir, 'checkpoints'),
-        prediction_dir=os.path.join(base_dir, 'predictions'),
+        log_dir=os.path.join(base_dir, 'logs_gmm'),
+        checkpoint_dir=os.path.join(base_dir, 'checkpoints_gmm'),
+        prediction_dir=os.path.join(base_dir, 'predictions_gmm'),
         optimizer='adam',
         learning_rate=.001,
         lstm_size=300,

@@ -74,8 +74,6 @@ drop_cols = [
     'user_id',
     'product_id',
     'order_id',
-    'order_dow',
-    'order_hour_of_day',
     'product_name',
     'aisle_id',
     'department_id',

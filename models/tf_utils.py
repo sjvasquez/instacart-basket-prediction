@@ -37,7 +37,7 @@ def lstm_layer(inputs, lengths, state_size, keep_prob=1.0, scope='lstm-layer', r
 
 
 def temporal_convolution_layer(inputs, output_units, convolution_width, causal=False, dilation_rate=[1], bias=True,
-                               activation=None, dropout=None, scope='causal-conv-layer', reuse=False):
+                               activation=None, dropout=None, scope='temporal-convolution-layer', reuse=False):
     """
     Convolution over the temporal axis of sequence data.
 
@@ -45,6 +45,8 @@ def temporal_convolution_layer(inputs, output_units, convolution_width, causal=F
         inputs: Tensor of shape [batch size, max sequence length, input_units].
         output_units: Output channels for convolution.
         convolution_width: Number of timesteps to use in convolution.
+        causal: Output at timestep t is a function of inputs at or before timestep t.
+        dilation_rate:  Dilation rate along temporal axis.
 
     Returns:
         Tensor of shape [batch size, max sequence length, output_units].
@@ -155,6 +157,18 @@ def dense_layer(inputs, output_units, bias=True, activation=None, batch_norm=Non
 
 
 def sequence_log_loss(y, y_hat, sequence_lengths, max_sequence_length, eps=1e-15):
+    """
+    Calculates average log loss on variable length sequences.
+
+    Args:
+        y: Label tensor of shape [batch size, max_sequence_length, input units].
+        y_hat: Prediction tensor, same shape as y.
+        sequence_lengths: Sequence lengths.  Tensor of shape [batch_size].
+        max_sequence_length: maximum length of padded sequence tensor.
+
+    Returns:
+        Log loss. 0-dimensional tensor.
+    """
     y = tf.cast(y, tf.float32)
     y_hat = tf.minimum(tf.maximum(y_hat, eps), 1.0 - eps)
     log_losses = y*tf.log(y_hat) + (1.0 - y)*tf.log(1.0 - y_hat)
@@ -164,6 +178,18 @@ def sequence_log_loss(y, y_hat, sequence_lengths, max_sequence_length, eps=1e-15
 
 
 def sequence_rmse(y, y_hat, sequence_lengths, max_sequence_length):
+    """
+    Calculates RMSE on variable length sequences.
+
+    Args:
+        y: Label tensor of shape [batch size, max_sequence_length, input units].
+        y_hat: Prediction tensor, same shape as y.
+        sequence_lengths: Sequence lengths.  Tensor of shape [batch_size].
+        max_sequence_length: maximum length of padded sequence tensor.
+
+    Returns:
+        RMSE. 0-dimensional tensor.
+    """
     y = tf.cast(y, tf.float32)
     squared_error = tf.square(y - y_hat)
     sequence_mask = tf.cast(tf.sequence_mask(sequence_lengths, maxlen=max_sequence_length), tf.float32)
@@ -173,6 +199,16 @@ def sequence_rmse(y, y_hat, sequence_lengths, max_sequence_length):
 
 
 def log_loss(y, y_hat, eps=1e-15):
+    """
+    Calculates log loss between two tensors.
+
+    Args:
+        y: Label tensor.
+        y_hat: Prediction tensor
+
+    Returns:
+        Log loss. 0-dimensional tensor.
+    """
     y = tf.cast(y, tf.float32)
     y_hat = tf.minimum(tf.maximum(y_hat, eps), 1.0 - eps)
     log_loss = -tf.reduce_mean(y*tf.log(y_hat) + (1.0 - y)*tf.log(1.0 - y_hat))

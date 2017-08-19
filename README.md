@@ -72,6 +72,9 @@ The final reorder probabilities are a weighted average of the outputs from the s
 
 
 ## Requirements
+64 GB RAM and 12 GB GPU (recommended), Python 2.7
+
+Python packages:
   - lightgbm==2.0.4
   - numpy==1.13.1
   - pandas==0.19.2

@@ -79,4 +79,4 @@ Python packages:
   - numpy==1.13.1
   - pandas==0.19.2
   - scikit-learn==0.18.1
-  - tensorflow==1.3.0rc2
+  - tensorflow==1.3.0

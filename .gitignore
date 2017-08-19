@@ -102,3 +102,6 @@ ENV/
 
 # sftp
 sftp-config.json
+
+# data
+*.csv

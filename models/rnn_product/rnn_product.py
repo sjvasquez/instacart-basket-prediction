@@ -26,8 +26,6 @@ class DataReader(object):
             'days_since_prior_order_history',
             'order_size_history',
             'reorder_size_history',
-            'order_is_weekend_history',
-            'order_part_of_day_history',
             'order_number_history',
             'history_length',
             'product_name',
@@ -80,8 +78,6 @@ class DataReader(object):
             batch['order_dow_history'] = np.roll(batch['order_dow_history'], -1, axis=1)
             batch['order_hour_history'] = np.roll(batch['order_hour_history'], -1, axis=1)
             batch['days_since_prior_order_history'] = np.roll(batch['days_since_prior_order_history'], -1, axis=1)
-            batch['order_is_weekend_history'] = np.roll(batch['order_is_weekend_history'], -1, axis=1)
-            batch['order_part_of_day_history'] = np.roll(batch['order_part_of_day_history'], -1, axis=1)
             batch['order_number_history'] = np.roll(batch['order_number_history'], -1, axis=1)
             batch['next_is_ordered'] = np.roll(batch['is_ordered_history'], -1, axis=1)
             batch['is_none'] = batch['product_id'] == 0
@@ -117,8 +113,6 @@ class rnn(TFBaseModel):
         self.days_since_prior_order_history = tf.placeholder(tf.int32, [None, 100])
         self.order_size_history = tf.placeholder(tf.int32, [None, 100])
         self.reorder_size_history = tf.placeholder(tf.int32, [None, 100])
-        self.order_is_weekend_history = tf.placeholder(tf.int32, [None, 100])
-        self.order_part_of_day_history = tf.placeholder(tf.int32, [None, 100])
         self.order_number_history = tf.placeholder(tf.int32, [None, 100])
         self.product_name = tf.placeholder(tf.int32, [None, 30])
         self.product_name_length = tf.placeholder(tf.int32, [None])
@@ -175,8 +169,6 @@ class rnn(TFBaseModel):
         days_since_prior_order_history = tf.one_hot(self.days_since_prior_order_history, 31)
         order_size_history = tf.one_hot(self.order_size_history, 60)
         reorder_size_history = tf.one_hot(self.reorder_size_history, 50)
-        order_is_weekend_history = tf.one_hot(self.order_is_weekend_history, 2)
-        order_part_of_day_history = tf.one_hot(self.order_part_of_day_history, 3)
         order_number_history = tf.one_hot(self.order_number_history, 101)
 
         index_in_order_history_scalar = tf.expand_dims(tf.cast(self.index_in_order_history, tf.float32) / 20.0, 2)
@@ -195,8 +187,6 @@ class rnn(TFBaseModel):
             days_since_prior_order_history,
             order_size_history,
             reorder_size_history,
-            order_is_weekend_history,
-            order_part_of_day_history,
             order_number_history,
             index_in_order_history_scalar,
             order_dow_history_scalar,

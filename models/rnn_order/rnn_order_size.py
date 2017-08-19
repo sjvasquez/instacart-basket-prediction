@@ -26,8 +26,6 @@ class DataReader(object):
             'days_since_prior_order_history',
             'order_size_history',
             'reorder_size_history',
-            'order_is_weekend_history',
-            'order_part_of_day_history',
             'order_number_history',
             'history_length',
             'product_name',

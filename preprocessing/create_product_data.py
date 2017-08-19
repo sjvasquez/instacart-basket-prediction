@@ -24,8 +24,6 @@ if __name__ == '__main__':
     reorder_size_histories = []
     order_dow_histories = []
     order_hour_histories = []
-    order_is_weekend_histories = []
-    order_part_of_day_histories = []
     days_since_prior_order_histories = []
     order_number_histories = []
 
@@ -87,10 +85,6 @@ if __name__ == '__main__':
             reorder_size_histories.append(reorder_size)
             order_dow_histories.append(row['order_dows'])
             order_hour_histories.append(row['order_hours'])
-            order_is_weekend_histories.append(
-                ' '.join(['0' if x in {5, 6} else '1' for x in map(int, row['order_dows'].split())]))
-            order_part_of_day_histories.append(
-                ' '.join(['0' if 4 <= x < 12 else '1' if 12 <= x < 17 else '2' for x in map(int, row['order_hours'].split())]))
             days_since_prior_order_histories.append(row['days_since_prior_orders'])
             order_number_histories.append(row['order_numbers'])
 
@@ -125,10 +119,6 @@ if __name__ == '__main__':
         reorder_size_histories.append(reorder_size)
         order_dow_histories.append(row['order_dows'])
         order_hour_histories.append(row['order_hours'])
-        order_is_weekend_histories.append(
-            ' '.join(['0' if x in {5, 6} else '1' for x in map(int, row['order_dows'].split())]))
-        order_part_of_day_histories.append(
-            ' '.join(['0' if 4 <= x < 12 else '1' if 12 <= x < 17 else '2' for x in map(int, row['order_hours'].split())]))
         days_since_prior_order_histories.append(row['days_since_prior_orders'])
         order_number_histories.append(row['order_numbers'])
 
@@ -144,8 +134,6 @@ if __name__ == '__main__':
         reorder_size_histories,
         order_dow_histories,
         order_hour_histories,
-        order_is_weekend_histories,
-        order_part_of_day_histories,
         days_since_prior_order_histories,
         order_number_histories,
         labels,
@@ -163,8 +151,6 @@ if __name__ == '__main__':
         'reorder_size_history',
         'order_dow_history',
         'order_hour_history',
-        'order_is_weekend_history',
-        'order_part_of_day_history',
         'days_since_prior_order_history',
         'order_number_history',
         'label',

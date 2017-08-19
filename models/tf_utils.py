@@ -156,6 +156,50 @@ def dense_layer(inputs, output_units, bias=True, activation=None, batch_norm=Non
         return z
 
 
+def wavenet(x, dilations, filter_widths, skip_channels, residual_channels, scope='wavenet', reuse=False):
+    """
+    A stack of causal dilated convolutions with paramaterized residual and skip connections as described
+    in the WaveNet paper (with some minor differences).
+
+    Args:
+        x: Input tensor of shape [batch size, max sequence length, input units].
+        dilations: List of dilations for each layer.  len(dilations) is the number of layers
+        filter_widths: List of filter widths.  Same length as dilations.
+        skip_channels: Number of channels to use for skip connections.
+        residual_channels: Number of channels to use for residual connections.
+
+    Returns:
+        Tensor of shape [batch size, max sequence length, len(dilations)*skip_channels].
+    """
+    with tf.variable_scope(scope, reuse=reuse):
+
+        # wavenet uses 2x1 conv here
+        inputs = time_distributed_dense_layer(x, residual_channels, activation=tf.nn.tanh, scope='x-proj')
+
+        skip_outputs = []
+        for i, (dilation, filter_width) in enumerate(zip(dilations, filter_widths)):
+            dilated_conv = temporal_convolution_layer(
+                inputs=inputs,
+                output_units=2*residual_channels,
+                convolution_width=filter_width,
+                causal=True,
+                dilation_rate=[dilation],
+                scope='cnn-{}'.format(i)
+            )
+            conv_filter, conv_gate = tf.split(dilated_conv, 2, axis=2)
+            dilated_conv = tf.nn.tanh(conv_filter)*tf.nn.sigmoid(conv_gate)
+
+            output_units = skip_channels + residual_channels
+            outputs = time_distributed_dense_layer(dilated_conv, output_units, scope='cnn-{}-proj'.format(i))
+            skips, residuals = tf.split(outputs, [skip_channels, residual_channels], axis=2)
+
+            inputs += residuals
+            skip_outputs.append(skips)
+
+        skip_outputs = tf.nn.relu(tf.concat(skip_outputs, axis=2))
+        return skip_outputs
+
+
 def sequence_log_loss(y, y_hat, sequence_lengths, max_sequence_length, eps=1e-15):
     """
     Calculates average log loss on variable length sequences.

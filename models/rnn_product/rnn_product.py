@@ -7,7 +7,7 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from data_frame import DataFrame
-from tf_utils import lstm_layer, time_distributed_dense_layer, dense_layer, sequence_log_loss, temporal_convolution_layer
+from tf_utils import lstm_layer, time_distributed_dense_layer, dense_layer, sequence_log_loss, wavenet
 from tf_base_model import TFBaseModel
 
 
@@ -88,8 +88,12 @@ class DataReader(object):
 
 class rnn(TFBaseModel):
 
-    def __init__(self, lstm_size=300, **kwargs):
+    def __init__(self, lstm_size, dilations, filter_widths, skip_channels, residual_channels, **kwargs):
         self.lstm_size = lstm_size
+        self.dilations = dilations
+        self.filter_widths = filter_widths
+        self.skip_channels = skip_channels
+        self.residual_channels = residual_channels
         super(rnn, self).__init__(**kwargs)
 
     def calculate_loss(self):
@@ -202,26 +206,12 @@ class rnn(TFBaseModel):
         return x
 
     def calculate_outputs(self, x):
-        # lstm
-        h = lstm_layer(x, self.history_length, self.lstm_size, scope='lstm-1')
-
-        # cnn
-        c = time_distributed_dense_layer(x, self.lstm_size, activation=tf.nn.relu, scope='dense-1')
-        for i in range(6):
-            c_i = temporal_convolution_layer(
-                inputs=c,
-                output_units=self.lstm_size,
-                convolution_width=2,
-                activation=tf.nn.relu,
-                causal=True,
-                dilation_rate=[2**i],
-                scope='cnn-exp-{}'.format(i)
-            )
-            c += c_i
-
+        h = lstm_layer(x, self.history_length, self.lstm_size)
+        c = wavenet(x, self.dilations, self.filter_widths, self.skip_channels, self.residual_channels)
         h = tf.concat([h, c, x], axis=2)
-        self.h_final = time_distributed_dense_layer(h, 50, activation=tf.nn.relu, scope='dense-2')
-        y_hat = time_distributed_dense_layer(self.h_final, 1, activation=tf.nn.sigmoid, scope='dense-3')
+
+        self.h_final = time_distributed_dense_layer(h, 50, activation=tf.nn.relu, scope='dense-1')
+        y_hat = time_distributed_dense_layer(self.h_final, 1, activation=tf.nn.sigmoid, scope='dense-2')
         y_hat = tf.squeeze(y_hat, 2)
 
         final_temporal_idx = tf.stack([tf.range(tf.shape(self.history_length)[0]), self.history_length - 1], axis=1)
@@ -251,6 +241,10 @@ if __name__ == '__main__':
         optimizer='adam',
         learning_rate=.001,
         lstm_size=300,
+        dilations=[2**i for i in range(6)],
+        filter_widths=[2]*6,
+        skip_channels=64,
+        residual_channels=128,
         batch_size=128,
         num_training_steps=200000,
         early_stopping_steps=30000,

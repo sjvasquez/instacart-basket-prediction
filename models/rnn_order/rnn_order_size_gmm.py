@@ -16,22 +16,13 @@ class DataReader(object):
     def __init__(self, data_dir):
         data_cols = [
             'user_id',
-            'product_id',
-            'aisle_id',
-            'department_id',
-            'is_ordered_history',
-            'index_in_order_history',
-            'order_dow_history',
-            'order_hour_history',
-            'days_since_prior_order_history',
+            'history_length',
             'order_size_history',
             'reorder_size_history',
             'order_number_history',
-            'history_length',
-            'product_name',
-            'product_name_length',
-            'eval_set',
-            'label'
+            'order_dow_history',
+            'order_hour_history',
+            'days_since_prior_order_history',
         ]
         data = [np.load(os.path.join(data_dir, '{}.npy'.format(i)), mmap_mode='r') for i in data_cols]
         self.test_df = DataFrame(columns=data_cols, data=data)
@@ -97,15 +88,17 @@ class rnn(TFBaseModel):
         return loss
 
     def get_input_sequences(self):
+        self.user_id = tf.placeholder(tf.int32, [None])
+        self.history_length = tf.placeholder(tf.int32, [None])
+        self.label = tf.placeholder(tf.int32, [None])
+        self.eval_set = tf.placeholder(tf.int32, [None])
+
         self.order_size_history = tf.placeholder(tf.int32, [None, 100])
         self.reorder_size_history = tf.placeholder(tf.int32, [None, 100])
         self.order_number_history = tf.placeholder(tf.int32, [None, 100])
         self.order_dow_history = tf.placeholder(tf.int32, [None, 100])
         self.order_hour_history = tf.placeholder(tf.int32, [None, 100])
         self.days_since_prior_order_history = tf.placeholder(tf.int32, [None, 100])
-        self.history_length = tf.placeholder(tf.int32, [None])
-        self.label = tf.placeholder(tf.int32, [None])
-        self.eval_set = tf.placeholder(tf.int32, [None])
         self.next_reorder_size = tf.placeholder(tf.int32, [None, 100])
 
         self.keep_prob = tf.placeholder(tf.float32)
@@ -143,12 +136,11 @@ class rnn(TFBaseModel):
         return x
 
     def calculate_outputs(self, x):
-        h = lstm_layer(self.x, self.history_length, self.lstm_size, scope='lstm1')
-
-        self.h_final = time_distributed_dense_layer(h, 50, activation=tf.nn.relu, scope='dense0')
+        h = lstm_layer(x, self.history_length, self.lstm_size, scope='lstm-1')
+        h_final = time_distributed_dense_layer(h, 50, activation=tf.nn.relu, scope='dense-1')
 
         n_components = 3
-        params = time_distributed_dense_layer(self.h_final, n_components*3, scope='dense1')
+        params = time_distributed_dense_layer(h_final, n_components*3, scope='dense-2')
         means, variances, mixing_coefs = tf.split(params, 3, axis=2)
 
         mixing_coefs = tf.nn.softmax(mixing_coefs - tf.reduce_min(mixing_coefs, 2, keep_dims=True))
@@ -156,31 +148,30 @@ class rnn(TFBaseModel):
 
         labels = tf.cast(tf.tile(tf.expand_dims(self.next_reorder_size, 2), (1, 1, n_components)), tf.float32)
         n_likelihoods = 1.0 / (tf.sqrt(2*np.pi*variances))*tf.exp(-tf.square(labels - means) / (2*variances))
-        log_likelihood = -tf.log(tf.reduce_sum(mixing_coefs*n_likelihoods, axis=2) + 1e-10)
+        nlls = -tf.log(tf.reduce_sum(mixing_coefs*n_likelihoods, axis=2) + 1e-10)
 
-        self.means = means
-        self.variances = variances
-        self.mixing_coefs = mixing_coefs
-        self.nll = log_likelihood
+        sequence_mask = tf.cast(tf.sequence_mask(self.history_length, maxlen=100), tf.float32)
+        nll = tf.reduce_sum(nlls*sequence_mask) / tf.cast(tf.reduce_sum(self.history_length), tf.float32)
 
+        # evaluate likelihood at a sample of discrete points
         samples = tf.cast(tf.reshape(tf.range(25), (1, 1, 1, 25)), tf.float32)
-
         means = tf.tile(tf.expand_dims(means, 3), (1, 1, 1, 25))
         variances = tf.tile(tf.expand_dims(variances, 3), (1, 1, 1, 25))
         mixing_coefs = tf.tile(tf.expand_dims(mixing_coefs, 3), (1, 1, 1, 25))
-        sample_n_likelihoods = 1.0 / (tf.sqrt(2*np.pi*variances))*tf.exp(-tf.square(samples - means) / (2*variances))
+        n_sample_likelihoods = 1.0 / (tf.sqrt(2*np.pi*variances))*tf.exp(-tf.square(samples - means) / (2*variances))
+        sample_nlls = -tf.log(tf.reduce_sum(mixing_coefs*n_sample_likelihoods, axis=2) + 1e-10)
 
-        self.sample_log_likelihoods = tf.reduce_sum(mixing_coefs*sample_n_likelihoods, axis=2)
         final_temporal_idx = tf.stack([tf.range(tf.shape(self.history_length)[0]), self.history_length - 1], axis=1)
-        self.final_states = tf.gather_nd(self.h_final, final_temporal_idx)
+        final_states = tf.gather_nd(h_final, final_temporal_idx)
+        final_sample_nlls = tf.gather_nd(sample_nlls, final_temporal_idx)
+        self.final_states = tf.concat([final_states, final_sample_nlls], axis=1)
 
         self.prediction_tensors = {
             'user_ids': self.user_id,
-            'final_states': self.final_states,
-            'predictions': self.sample_log_likelihoods
+            'final_states': self.final_states
         }
 
-        return self.nll
+        return nll
 
 
 if __name__ == '__main__':
@@ -198,13 +189,13 @@ if __name__ == '__main__':
         lstm_size=300,
         batch_size=128,
         num_training_steps=200000,
-        early_stopping_steps=30000,
+        early_stopping_steps=10000,
         warm_start_init_step=0,
         regularization_constant=0.0,
         keep_prob=1.0,
         enable_parameter_averaging=False,
         num_restarts=2,
-        min_steps_to_checkpoint=5000,
+        min_steps_to_checkpoint=1000,
         log_interval=20,
         num_validation_batches=4,
     )

@@ -64,8 +64,8 @@ h_df['{}_prediction'.format(prefix)] = np.load('../rnn_order_size/predictions/pr
 product_df = product_df.merge(h_df, how='left', on='user_id')
 
 prefix = 'rnn_order_size_gmm'
-h_df = pd.DataFrame(np.load('../rnn_order_size/predictions/final_states.npy')).add_prefix('{}_h'.format(prefix))
-h_df['user_id'] = np.load('../rnn_order_size/predictions/user_ids.npy')
+h_df = pd.DataFrame(np.load('../rnn_order_size/predictions_gmm/final_states.npy')).add_prefix('{}_h'.format(prefix))
+h_df['user_id'] = np.load('../rnn_order_size/predictions_gmm/user_ids.npy')
 product_df = product_df.merge(h_df, how='left', on='user_id')
 
 

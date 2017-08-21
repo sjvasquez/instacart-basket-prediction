@@ -199,14 +199,15 @@ class rnn(TFBaseModel):
         return x
 
     def calculate_outputs(self, x):
-        h = lstm_layer(x, self.history_length, self.lstm_size, scope='lstm1')
+        h = lstm_layer(x, self.history_length, self.lstm_size, scope='lstm-1')
         h = tf.concat([h, x], axis=2)
+        h_final = time_distributed_dense_layer(h, 50, activation=tf.nn.relu, scope='dense-1')
 
-        n_components = 3
-        self.h_final = time_distributed_dense_layer(h, 50, activation=tf.nn.relu, scope='dense0')
-        params = time_distributed_dense_layer(self.h_final, n_components*2, scope='dense1', activation=None)
+        n_components = 1
+        params = time_distributed_dense_layer(h_final, n_components*2, scope='dense-2', activation=None)
         ps, mixing_coefs = tf.split(params, 2, axis=2)
 
+        # this is implemented incorrectly, but it still helped...
         mixing_coefs = tf.nn.softmax(mixing_coefs - tf.reduce_min(mixing_coefs, 2, keep_dims=True))
         ps = tf.nn.sigmoid(ps)
 
@@ -216,7 +217,7 @@ class rnn(TFBaseModel):
         avg_loss = tf.reduce_sum(losses*sequence_mask) / tf.cast(tf.reduce_sum(self.history_length), tf.float32)
 
         final_temporal_idx = tf.stack([tf.range(tf.shape(self.history_length)[0]), self.history_length - 1], axis=1)
-        self.final_states = tf.gather_nd(self.h_final, final_temporal_idx)
+        self.final_states = tf.gather_nd(h_final, final_temporal_idx)
 
         self.prediction_tensors = {
             'user_ids': self.user_id,
